@@ -104,14 +104,16 @@ void INT(){
                     if(x==0xfa){
                         ACK=true;
                     }else if(x==0x76){
-                        bufwchr("\033");
+                        bufwchr('\033');
                     }else if(x==0xf0){
                         kstate=kstate+1;
                         break;
                     }else if(x==0xe0)//EXTENDED
                         kstate=kstate+2;//TEMPORARY
                     else if(x==0x12){//SHIFT
-                        shftk=kstate==0;
+                        if(kstate==0)
+                            modifs|=L_SHIFT;
+                        else modifs&=~L_SHIFT;
                     }else if(kstate==1)
                         kstate=0;
                     else if(x==0x66){//BCKSPC
