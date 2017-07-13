@@ -61,7 +61,6 @@ void PS2Kbd::send(uint8_t x) {
         }
     }
     uint16_t shift=x|(0x200)|(0x100*d);
-    Serial.println(shift,2);
     digitalWrite(clkPin,LOW);
     delayMicroseconds(60);
     digitalWrite(dataPin,LOW);
@@ -185,7 +184,6 @@ void PS2Kbd::interruptHandler() {
 }
 
 void PS2Kbd::begin() {
-    Serial.println("begin");
     pinMode(dataPin,OUTPUT_OPEN_DRAIN);
     pinMode(clkPin,OUTPUT_OPEN_DRAIN);
     digitalWrite(dataPin,true);
@@ -193,7 +191,6 @@ void PS2Kbd::begin() {
     if (keyboard0==nullptr) {
         keyboard0 = this;
         attachInterrupt(digitalPinToInterrupt(clkPin), kbdInterrupt0, FALLING);
-        Serial.println("intset");
     }
     else if (keyboard1==nullptr) {
         keyboard1 = this;
