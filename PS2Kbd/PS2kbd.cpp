@@ -153,7 +153,19 @@ void INT(){
                     if(x==12){
                         cnt=2;
                         kstate+=2;
-                    }else kstate=0;
+                        break;
+                    }else if(kstate=3){
+                        
+                    }else if(x==0x6b){
+                        bufwchr('\x80');
+                    }else if(x==0x72){
+                        bufwchr('\x81');
+                    }else if(x==0x74){
+                        bufwchr('\x82');
+                    }else if(x==0x75){
+                        bufwchr('\x83');
+                    }
+                    kstate=0;
                     break;
                 case 4:
                 case 5:
