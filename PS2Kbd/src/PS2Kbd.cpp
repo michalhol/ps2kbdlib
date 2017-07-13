@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <cstdint>
 #include "PS2Kbd.h"
-
+ 
 //http://retired.beyondlogic.org/keyboard/keybrd.htm
 
 
@@ -13,30 +13,17 @@ PS2Kbd* PS2Kbd::keyboard4;
 PS2Kbd* PS2Kbd::keyboard5;
 PS2Kbd* PS2Kbd::keyboard6;
 PS2Kbd* PS2Kbd::keyboard7;
-/*
-volatile uint16_t PS2Kbd::shift;
-volatile uint8_t PS2Kbd::modifs;
-bool PS2Kbd::cpslk;
-bool PS2Kbd::scrlk;
-bool PS2Kbd::numlk;
-bool PS2Kbd::dirOUT;
-uint8_t PS2Kbd::kstate;
-uint8_t PS2Kbd::cnt;
-uint8_t PS2Kbd::rc;
-const uint8_t PS2Kbd::CHARS;
-volatile unsigned char PS2Kbd::buffer;
-volatile uint8_t PS2Kbd::from;
-volatile uint8_t PS2Kbd::to;
-volatile bool PS2Kbd::ACK;
-bool PS2Kbd::updLEDs;
-*/
+
+
 const char PS2Kbd::chrsNS[]={
     0,249, 0  ,245,243,241,242,252,0,250 ,248,246,244 ,'\t','`',0,
     0, 0 , 0  , 0 , 0 ,'q','1', 0 ,0, 0 ,'z' ,'s','a','w' ,'2' ,0,
     0,'c','x' ,'d','e','4','3', 0 ,0,' ','v' ,'f','t','r' ,'5' ,0,
     0,'n','b' ,'h','g','y','6', 0 ,0, 0 ,'m' ,'j','u','7' ,'8' ,0,
     0,',','k' ,'i','o','0','9', 0 ,0,'.','/' ,'l',';','p' ,'-' ,0,
-    0, 0 ,'\'', 0 ,'[','=', 0 , 0 ,0, 0 ,'\n',']', 0 ,'\\', 0  ,0};
+    0, 0 ,'\'', 0 ,'[','=', 0 , 0 ,0, 0 ,'\n',']', 0 ,'\\', 0  ,0,
+    0, 0, 0, 0, 0, 0,'\b', 0 ,0,'1',0 ,'4','7',0 ,0 ,0,
+    '0','.','2' ,'5','6','8',0, 0 ,0,'+', '3' ,'-','*', '9' , 0 ,0};
     
 const char PS2Kbd::chrsSH[]={
     0,249, 0  ,245,243,241,242,252,0,250,248 ,246,244,'\t','~',0,
@@ -44,8 +31,9 @@ const char PS2Kbd::chrsSH[]={
     0,'C','X' ,'D','E','$','#', 0 ,0,' ','V' ,'F','T','R' ,'%',0,
     0,'N','B' ,'H','G','Y','^', 0 ,0, 0 ,'M' ,'J','U','&' ,'*',0,
     0,'<','K' ,'I','O',')','(', 0 ,0,'>','?' ,'L',':','P' ,'_',0,
-    0, 0 ,'\"', 0 ,'{','+', 0 , 0 ,0, 0 ,'\n','}', 0 ,'|' , 0 ,0};
-
+    0, 0 ,'\"', 0 ,'{','+', 0 , 0 ,0, 0 ,'\n','}', 0 ,'|' , 0 ,0,
+    0, 0, 0, 0, 0, 0, '\b', 0 ,0,'1',0 ,'4','7',0 ,0 ,0,
+    '0','.','2' ,'5','6','8',0, 0 ,0,'+', '3' ,'-','*', '9' , 0 ,0};
 
 
 uint8_t PS2Kbd::getModifiers() {
@@ -116,65 +104,91 @@ void PS2Kbd::setLeds(uint8_t d) {
 void PS2Kbd::interruptHandler() {
     if(dirOUT)return;
     shift>>=1;
-    shift|=(digitalRead(dataPin)<<10);
-    if(++rc==11) {
-        if((shift&0x401)==0x400) {
+    shift|=(digitalRead(19)<<10);
+    if(++rc==11){
+        if((shift&0x401)==0x400){
             uint8_t x=(shift>>1)&0xff;
-            switch(kstate) {
+            switch(kstate){
                 case 0:
                 case 1:
-                    if(x==0xfa) {
+                    if(x==0xfa){
                         ACK=true;
-                    }else if(x==0x76) {
+                    }else if(x==0x76){
                         bufwchr('\033');
-                    }else if(x==0xf0) {
-                        kstate=kstate+1;
+                    }else if(x==0xf0){
+                        kstate=1;
                         break;
                     }else if(x==0xe0)//EXTENDED
-                        kstate=kstate+2;//TEMPORARY
-                    else if(x==0x12) {//SHIFT
+                        kstate=2;//TEMPORARY
+                    else if(x==0x12){//SHIFT
                         if(kstate==0)
                             modifs|=L_SHIFT;
                         else modifs&=~L_SHIFT;
+                    }else if(x==0x11){//ALT
+                        if(kstate==0)
+                            modifs|=L_ALT;
+                        else modifs&=~L_ALT;
+                    }else if(x==0x14){//CTRL
+                        if(kstate==0)
+                            modifs|=L_CTRL;
+                        else modifs&=~L_CTRL;
                     }else if(kstate==1)
                         kstate=0;
-                    else if(x==0x66) {//BCKSPC
+                    else if(x==0x66){//BCKSPC
                         if(kstate==0)
                             bufwchr('\b');
-                    }else if(x==0xe1) {//PSBRK
+                    }else if(x==0xe1){//PSBRK
                         kstate=4;
                         cnt=7;
-                    }else if(x==0x58) {
+                    }else if(x==0x58){
                         cpslk=!cpslk;
                         updLEDs=true;
-                    }else if(x==0x77) {
+                    }else if(x==0x77){
                         numlk=!numlk;
                         updLEDs=true;
-                    }else if(x==0x7E) {
+                    }else if(x==0x7E){
                         scrlk=!scrlk;
                         updLEDs=true;
-                    }else if(x<CHARS) {
-                        if((modifs&3)!=cpslk) {
+                    }else if(x<CHARS){
+                        if((modifs&3)!=cpslk){
                             if(chrsSH[x]!=0)
                             bufwchr(chrsSH[x]);
-                        }else if(chrsNS[x]!=0) {
+                        }else if(chrsNS[x]!=0){
                             bufwchr(chrsNS[x]);
                         }
                     }
                     break;
                 case 2:
                 case 3:
-                    if(x==12) {
+                    if(x==12){
                         cnt=2;
                         kstate+=2;
-                    }else kstate=0;
+                        break;
+                    }else if(kstate==3){
+                        
+                    }else {
+                        switch(x) {
+                            case 0x6b:
+                                bufwchr('\x80');
+                                break;
+                            case 0x72:
+                                bufwchr('\x81');
+                                break;
+                            case 0x74:
+                                bufwchr('\x82');
+                                break;
+                            case 0x75:
+                                bufwchr('\x83');
+                                break;
+                        }
+                    }
+                    kstate=0;
                     break;
                 case 4:
                 case 5:
                     cnt--;
-                    if(cnt==0) {
+                    if(cnt==0)
                         kstate=0;
-                    }
                     break;
             }
         }
@@ -234,7 +248,7 @@ PS2Kbd::PS2Kbd(int dataPin, int clkPin)
     kstate(0),
     cnt(0),
     rc(0),
-    CHARS(0x60),
+    CHARS(0x80),
     from(0),
     to(0),
     ACK(false),
