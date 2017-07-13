@@ -114,6 +114,14 @@ void INT(){
                         if(kstate==0)
                             modifs|=L_SHIFT;
                         else modifs&=~L_SHIFT;
+                    }else if(x==0x11){//ALT
+                        if(kstate==0)
+                            modifs|=L_ALT;
+                        else modifs&=~L_ALT;
+                    }else if(x==0x14){//CTRL
+                        if(kstate==0)
+                            modifs|=L_CTRL;
+                        else modifs&=~L_CTRL;
                     }else if(kstate==1)
                         kstate=0;
                     else if(x==0x66){//BCKSPC
