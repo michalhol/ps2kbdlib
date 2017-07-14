@@ -16,24 +16,26 @@ PS2Kbd* PS2Kbd::keyboard7;
 
 
 const char PS2Kbd::chrsNS[]={
-    0,249, 0  ,245,243,241,242,252,0,250 ,248,246,244 ,'\t','`',0,
-    0, 0 , 0  , 0 , 0 ,'q','1', 0 ,0, 0 ,'z' ,'s','a','w' ,'2' ,0,
-    0,'c','x' ,'d','e','4','3', 0 ,0,' ','v' ,'f','t','r' ,'5' ,0,
-    0,'n','b' ,'h','g','y','6', 0 ,0, 0 ,'m' ,'j','u','7' ,'8' ,0,
-    0,',','k' ,'i','o','0','9', 0 ,0,'.','/' ,'l',';','p' ,'-' ,0,
-    0, 0 ,'\'', 0 ,'[','=', 0 , 0 ,0, 0 ,'\n',']', 0 ,'\\', 0  ,0,
-    0, 0, 0, 0, 0, 0,'\b', 0 ,0,'1',0 ,'4','7',0 ,0 ,0,
-    '0','.','2' ,'5','6','8',0, 0 ,0,'+', '3' ,'-','*', '9' , 0 ,0};
+    0,    249,  0,    245,  243,  241,  242,  252,  0,    250,  248,  246,  244,  '\t', '`',  0,
+    0,    0,    0,    0,    0,    'q',  '1',  0,    0,    0,    'z',   's',  'a',  'w',  '2',  0,
+    0,    'c',  'x',  'd',  'e',  '4',  '3',  0,    0,    ' ',  'v',  'f',  't',  'r',  '5',  0,
+    0,    'n',  'b',  'h',  'g',  'y',  '6',  0,    0,    0,    'm',  'j',  'u',  '7',  '8',  0,
+    0,    ',',  'k',  'i',  'o',  '0',  '9',  0,    0,    '.',  '/',  'l',  ';',  'p',  '-',  0,
+    0,    0,    '\'', 0,    '[',  '=',  0,    0,    0,    0,    '\n', ']',  0,    '\\', 0,    0,
+    0,    0,    0,    0,    0,    0,    '\b', 0,    0,    '1',  0,    '4',  '7',  0,    0,    0,
+    '0',  '.',  '2',  '5',  '6',  '8',  '\033',0,   251,  '+',  '3',  '-',  '*',  '9',  0,    0,
+    0,    0,    0,    247,  0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0};
     
 const char PS2Kbd::chrsSH[]={
-    0,249, 0  ,245,243,241,242,252,0,250,248 ,246,244,'\t','~',0,
-    0, 0 , 0  , 0 , 0 ,'Q','!', 0 ,0, 0 ,'Z' ,'S','A','W' ,'@',0,
-    0,'C','X' ,'D','E','$','#', 0 ,0,' ','V' ,'F','T','R' ,'%',0,
-    0,'N','B' ,'H','G','Y','^', 0 ,0, 0 ,'M' ,'J','U','&' ,'*',0,
-    0,'<','K' ,'I','O',')','(', 0 ,0,'>','?' ,'L',':','P' ,'_',0,
-    0, 0 ,'\"', 0 ,'{','+', 0 , 0 ,0, 0 ,'\n','}', 0 ,'|' , 0 ,0,
-    0, 0, 0, 0, 0, 0, '\b', 0 ,0,'1',0 ,'4','7',0 ,0 ,0,
-    '0','.','2' ,'5','6','8',0, 0 ,0,'+', '3' ,'-','*', '9' , 0 ,0};
+    0,    249,  0,    245,  243,  241,  242,  252,  0,    250,  248,  246,  244,  '\t', '~',  0,
+    0,    0,    0,    0,    0,    'Q',  '!',  0,    0,    0,    'Z',  'S',  'A',  'W',  '@',  0,
+    0,    'C',  'X',  'D',  'E',  '$',  '#',  0,    0,    ' ',  'V',  'F',  'T',  'R',  '%',  0,
+    0,    'N',  'B',  'H',  'G',  'Y',  '^',  0,    0,    0,    'M',  'J',  'U',  '&',  '*',  0,
+    0,    '<',  'K',  'I',  'O',  ')',  '(',  0,    0,    '>',  '?',  'L',  ':',  'P',  '_',  0,
+    0,    0,    '\"', 0,    '{',  '+',  0,    0,    0,    0,    '\n', '}',  0,    '|',  0,    0,
+    0,    0,    0,    0,    0,    0,    '\b', 0,    0,    '1',  0,    '4',  '7',  0,    0,    0,
+    '0',  '.',  '2',  '5',  '6',  '8',  '\033',0,   0,    '+',  '3',  '-',  '*',  '9',  0,    0,
+    0,    0,    0,    247,  0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0};
 
 
 uint8_t PS2Kbd::getModifiers() {
@@ -113,17 +115,21 @@ void PS2Kbd::interruptHandler() {
                 case 1:
                     if(x==0xfa){
                         ACK=true;
-                    }else if(x==0x76){
-                        bufwchr('\033');
-                    }else if(x==0xf0){
+                    }else if(x==0xf0) {
                         kstate=1;
                         break;
-                    }else if(x==0xe0)//EXTENDED
+                    }else if(x==0xe0) {//EXTENDED
                         kstate=2;//TEMPORARY
-                    else if(x==0x12){//SHIFT
+                    }
+                    else if(x==0x12){//L_SHIFT
                         if(kstate==0)
                             modifs|=L_SHIFT;
                         else modifs&=~L_SHIFT;
+                    }
+                    else if(x==0x59){//R_SHIFT
+                        if(kstate==0)
+                            modifs|=R_SHIFT;
+                        else modifs&=~R_SHIFT;
                     }else if(x==0x11){//ALT
                         if(kstate==0)
                             modifs|=L_ALT;
@@ -134,10 +140,7 @@ void PS2Kbd::interruptHandler() {
                         else modifs&=~L_CTRL;
                     }else if(kstate==1)
                         kstate=0;
-                    else if(x==0x66){//BCKSPC
-                        if(kstate==0)
-                            bufwchr('\b');
-                    }else if(x==0xe1){//PSBRK
+                    else if(x==0xe1){//PSBRK
                         kstate=4;
                         cnt=7;
                     }else if(x==0x58){
@@ -160,25 +163,78 @@ void PS2Kbd::interruptHandler() {
                     break;
                 case 2:
                 case 3:
-                    if(x==12){
+                    if(x==0x12){
                         cnt=2;
                         kstate+=2;
+                        break;
+                    }else if(x==0xf0){
+                        kstate=3;
                         break;
                     }else if(kstate==3){
                         
                     }else {
                         switch(x) {
+                            case 0x11:
+                                //right alt
+                                if(kstate==2)
+                                    modifs|=R_ALT;
+                                else 
+                                    modifs&=~R_ALT;
+                                break;
+                            case 0x14:
+                                //right ctrl
+                                if(kstate==2)
+                                    modifs|=R_CTRL;
+                                else 
+                                    modifs&=~R_CTRL;
+                                break;
+                            case 0x4a:
+                                //slash on numpad
+                                bufwchr('/');
+                                break;
+                            case 0x5a:
+                                //home
+                                bufwchr('\n');
+                                break;
                             case 0x6b:
+                                //left arrow
                                 bufwchr('\x80');
                                 break;
+                            case 0x6c:
+                                //home
+                                bufwchr('\r');
+                                break;
+                            case 0x69:
+                                //end
+                                bufwchr('\x88');
+                                break;
+                            case 0x70:
+                                //page down
+                                bufwchr('\x85');
+                                break;
+                            case 0x71:
+                                //delete
+                                bufwchr('\x7F');
+                                break;
                             case 0x72:
+                                //down arrow
                                 bufwchr('\x81');
                                 break;
                             case 0x74:
+                                //right arrow
                                 bufwchr('\x82');
                                 break;
                             case 0x75:
+                                //up arrow
                                 bufwchr('\x83');
+                                break;
+                            case 0x7a:
+                                //page down
+                                bufwchr('\x87');
+                                break;
+                            case 0x7d:
+                                //page up
+                                bufwchr('\x86');
                                 break;
                         }
                     }
@@ -248,7 +304,7 @@ PS2Kbd::PS2Kbd(int dataPin, int clkPin)
     kstate(0),
     cnt(0),
     rc(0),
-    CHARS(0x80),
+    CHARS(0x90),
     from(0),
     to(0),
     ACK(false),
