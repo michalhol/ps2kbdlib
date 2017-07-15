@@ -1,0 +1,27 @@
+ESC:        0x1B ('\033')
+TAB:        0x09 ('\t')
+BACKSPACE:  0x08 ('\b')
+F1:         0xF1
+F2:         0xF2
+F3:         0xF3
+F4:         0xF4
+F5:         0xF5
+F6:         0xF6
+F7:         0xF7
+F8:         0xF8
+F9:         0xF9
+F10:        0xFA
+F11:        0xFB
+F12:        0xFC
+Insert:     0x85
+Home:       0x0D ('\r')
+Page up:    0x86
+Delete:     0x7F
+End:        0x88
+Page down:  0x87
+Left arrow: 0x80
+Right arrow:0x82
+Up arrow:   0x83
+Down arrow: 0x81
+
+All character keys have corresponding ID of the character.
