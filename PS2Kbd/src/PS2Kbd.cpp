@@ -4,16 +4,14 @@
  
 //http://retired.beyondlogic.org/keyboard/keybrd.htm
 
-
-PS2Kbd* PS2Kbd::keyboard0;
-PS2Kbd* PS2Kbd::keyboard1;
-PS2Kbd* PS2Kbd::keyboard2;
-PS2Kbd* PS2Kbd::keyboard3;
-PS2Kbd* PS2Kbd::keyboard4;
-PS2Kbd* PS2Kbd::keyboard5;
-PS2Kbd* PS2Kbd::keyboard6;
-PS2Kbd* PS2Kbd::keyboard7;
-
+PS2Kbd* PS2Kbd::keyboard0Ptr;
+PS2Kbd* PS2Kbd::keyboard1Ptr;
+PS2Kbd* PS2Kbd::keyboard2Ptr;
+PS2Kbd* PS2Kbd::keyboard3Ptr;
+PS2Kbd* PS2Kbd::keyboard4Ptr;
+PS2Kbd* PS2Kbd::keyboard5Ptr;
+PS2Kbd* PS2Kbd::keyboard6Ptr;
+PS2Kbd* PS2Kbd::keyboard7Ptr;
 
 const char PS2Kbd::chrsNS[]={
     0,    249,  0,    245,  243,  241,  242,  252,  0,    250,  248,  246,  244,  '\t', '`',  0,
@@ -25,7 +23,7 @@ const char PS2Kbd::chrsNS[]={
     0,    0,    0,    0,    0,    0,    '\b', 0,    0,    '1',  0,    '4',  '7',  0,    0,    0,
     '0',  '.',  '2',  '5',  '6',  '8',  '\033',0,   251,  '+',  '3',  '-',  '*',  '9',  0,    0,
     0,    0,    0,    247,  0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0};
-    
+
 const char PS2Kbd::chrsSH[]={
     0,    249,  0,    245,  243,  241,  242,  252,  0,    250,  248,  246,  244,  '\t', '~',  0,
     0,    0,    0,    0,    0,    'Q',  '!',  0,    0,    0,    'Z',  'S',  'A',  'W',  '@',  0,
@@ -36,7 +34,6 @@ const char PS2Kbd::chrsSH[]={
     0,    0,    0,    0,    0,    0,    '\b', 0,    0,    '1',  0,    '4',  '7',  0,    0,    0,
     '0',  '.',  '2',  '5',  '6',  '8',  '\033',0,   0,    '+',  '3',  '-',  '*',  '9',  0,    0,
     0,    0,    0,    247,  0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0};
-
 
 uint8_t PS2Kbd::getModifiers() {
     return modifs;
@@ -69,12 +66,21 @@ void PS2Kbd::send(uint8_t x) {
 }
 
 uint8_t PS2Kbd::available() {
-    return to-from;
+    return toChar-fromChar;
 }
 
 unsigned char PS2Kbd::read() {
-    if(from==to)return '\0';
-    return buffer[from++];
+    if(fromChar>=toChar)return '\0';
+    return charBuffer[fromChar++];
+}
+
+uint8_t PS2Kbd::availableRaw() {
+    return toRaw-fromRaw;
+}
+
+unsigned char PS2Kbd::readRaw() {
+    if(fromRaw>=toRaw)return '\0';
+    return keyScancodeBuffer[fromRaw++];
 }
 
 void PS2Kbd::waitACK() {
@@ -92,10 +98,20 @@ void PS2Kbd::tryUpdateLEDs() {
     send(scrlk|(numlk<<1)|(cpslk<<2));
 }
 
-//buffer write char
-void PS2Kbd::bufwchr(char x) {
-    if(to+1==from)return;
-    buffer[to++]=x;
+void PS2Kbd::bufferWriteScancode(uint8_t scc) {
+    if(toRaw + 1 >= sizeof(keyScancodeBuffer)) {
+        toRaw = 0;
+        fromRaw = 0;
+    }
+    keyScancodeBuffer[toRaw++]=scc;
+}
+
+void PS2Kbd::bufferWriteChar(char ch) {
+    if(toChar + 1 >= sizeof(charBuffer)) {
+        toChar = 0;
+        fromChar = 0;
+    }
+    charBuffer[toChar++]=ch;
 }
 
 void PS2Kbd::setLeds(uint8_t d) {
@@ -106,151 +122,213 @@ void PS2Kbd::setLeds(uint8_t d) {
 void PS2Kbd::interruptHandler() {
     if(dirOUT)return;
     shift>>=1;
-    shift|=(digitalRead(19)<<10);
+    shift|=(digitalRead(dataPin)<<10);
     if(++rc==11){
+        rc=0;
         if((shift&0x401)==0x400){
-            uint8_t x=(shift>>1)&0xff;
-            switch(kstate){
+            uint8_t data=(shift>>1)&0xff;
+            bufferWriteScancode(data);
+            switch(kstate) {
                 case 0:
-                case 1:
-                    if(x==0xfa){
-                        ACK=true;
-                    }else if(x==0xf0) {
-                        kstate=1;
-                        break;
-                    }else if(x==0xe0) {//EXTENDED
-                        kstate=2;//TEMPORARY
-                    }
-                    else if(x==0x12){//L_SHIFT
-                        if(kstate==0)
-                            modifs|=L_SHIFT;
-                        else modifs&=~L_SHIFT;
-                    }
-                    else if(x==0x59){//R_SHIFT
-                        if(kstate==0)
-                            modifs|=R_SHIFT;
-                        else modifs&=~R_SHIFT;
-                    }else if(x==0x11){//ALT
-                        if(kstate==0)
+                    //pressed key (nothing special expected)
+                    switch(data) {
+                        case 0xE0:
+                            kstate = 1;
+                            break;
+                        case 0xE1:
+                            /*
+                            * Don't care about this code...
+                            * ...or...
+                            * well, key Pause/Break has 8 bytes (not bits!) long scancode.
+                            * Luckily it's the only key (as far as I know) starting with 0xE1 so it can skip next 7 bytes.
+                            * The whole scancode is: E1 14 77 E1 F0 14 F0 77
+                            */
+                            kstate = 2;
+                            skipCount = 7;
+                            break;
+                        case 0xF0:
+                            //code meaning next byte will be key which was released
+                            kstate = 3;
+                            break;
+                        case 0x58:
+                            //caps lock
+                            cpslk = !cpslk;
+                            break;
+                        case 0x7E:
+                            //num lock
+                            numlk = !numlk;
+                            break;
+                        case 0x77:
+                            //scroll lock
+                            scrlk = !scrlk;
+                            break;
+                        case 0x11:
+                            //left alt
                             modifs|=L_ALT;
-                        else modifs&=~L_ALT;
-                    }else if(x==0x14){//CTRL
-                        if(kstate==0)
+                            break;
+                        case 0x12:
+                            //left shift
+                            modifs|=L_SHIFT;
+                            break;
+                        case 0x14:
+                            //left ctrl
                             modifs|=L_CTRL;
-                        else modifs&=~L_CTRL;
-                    }else if(kstate==1)
-                        kstate=0;
-                    else if(x==0xe1){//PSBRK
-                        kstate=4;
-                        cnt=7;
-                    }else if(x==0x58){
-                        cpslk=!cpslk;
-                        updLEDs=true;
-                    }else if(x==0x77){
-                        numlk=!numlk;
-                        updLEDs=true;
-                    }else if(x==0x7E){
-                        scrlk=!scrlk;
-                        updLEDs=true;
-                    }else if(x<CHARS){
-                        if((modifs&3)!=cpslk){
-                            if(chrsSH[x]!=0)
-                            bufwchr(chrsSH[x]);
-                        }else if(chrsNS[x]!=0){
-                            bufwchr(chrsNS[x]);
-                        }
+                            break;
+                        case 0x59:
+                            //rght shift
+                            modifs|=R_SHIFT;
+                            kstate = 0; 
+                            break;
+                        default:
+                            if(modifs&SHIFT) {
+                                bufferWriteChar(chrsSH[data]);
+                            }
+                            else if (cpslk && chrsNS[data] < 127){
+                                bufferWriteChar(toUpperCase(chrsNS[data]));
+                            }
+                            else {
+                                bufferWriteChar(chrsNS[data]);
+                            }
+                            break;
+                    }
+                    break;
+                case 1:
+                    //pressed (or released) extended code key (first byte was 0xE0)
+                    switch(data) {
+                        case 0xF0:
+                            kstate = 4;
+                            break;
+                        case 0x11:
+                            //rght alt
+                            modifs|=R_ALT;
+                            kstate = 0; 
+                            break;
+                        case 0x14:
+                            //rght ctrl
+                            modifs|=R_CTRL;
+                            kstate = 0; 
+                            break;
+                        case 0x4a:
+                            //slash on numpad
+                            bufferWriteChar('/');
+                            kstate = 0; 
+                            break;
+                        case 0x5a:
+                            //home
+                            bufferWriteChar('\n');
+                            kstate = 0; 
+                            break;
+                        case 0x6b:
+                            //left arrow
+                            bufferWriteChar('\x80');
+                            kstate = 0; 
+                            break;
+                        case 0x6c:
+                            //home
+                            bufferWriteChar('\r');
+                            kstate = 0; 
+                            break;
+                        case 0x69:
+                            //end
+                            bufferWriteChar('\x88');
+                            kstate = 0; 
+                            break;
+                        case 0x70:
+                            //page down
+                            bufferWriteChar('\x85');
+                            kstate = 0; 
+                            break;
+                        case 0x71:
+                            //delete
+                            bufferWriteChar('\x7F');
+                            kstate = 0; 
+                            break;
+                        case 0x72:
+                            //down arrow
+                            bufferWriteChar('\x81');
+                            kstate = 0; 
+                            break;
+                        case 0x74:
+                            //right arrow
+                            bufferWriteChar('\x82');
+                            kstate = 0; 
+                            break;
+                        case 0x75:
+                            //up arrow
+                            bufferWriteChar('\x83');
+                            kstate = 0; 
+                            break;
+                        case 0x7a:
+                            //page down
+                            bufferWriteChar('\x87');
+                            kstate = 0; 
+                            break;
+                        case 0x7d:
+                            //page up
+                            bufferWriteChar('\x86');
+                            kstate = 0; 
+                            break;
+                        default:
+                            kstate = 0; 
                     }
                     break;
                 case 2:
-                case 3:
-                    if(x==0x12){
-                        cnt=2;
-                        kstate+=2;
-                        break;
-                    }else if(x==0xf0){
-                        kstate=3;
-                        break;
-                    }else if(kstate==3){
-                        
-                    }else {
-                        switch(x) {
-                            case 0x11:
-                                //right alt
-                                if(kstate==2)
-                                    modifs|=R_ALT;
-                                else 
-                                    modifs&=~R_ALT;
-                                break;
-                            case 0x14:
-                                //right ctrl
-                                if(kstate==2)
-                                    modifs|=R_CTRL;
-                                else 
-                                    modifs&=~R_CTRL;
-                                break;
-                            case 0x4a:
-                                //slash on numpad
-                                bufwchr('/');
-                                break;
-                            case 0x5a:
-                                //home
-                                bufwchr('\n');
-                                break;
-                            case 0x6b:
-                                //left arrow
-                                bufwchr('\x80');
-                                break;
-                            case 0x6c:
-                                //home
-                                bufwchr('\r');
-                                break;
-                            case 0x69:
-                                //end
-                                bufwchr('\x88');
-                                break;
-                            case 0x70:
-                                //page down
-                                bufwchr('\x85');
-                                break;
-                            case 0x71:
-                                //delete
-                                bufwchr('\x7F');
-                                break;
-                            case 0x72:
-                                //down arrow
-                                bufwchr('\x81');
-                                break;
-                            case 0x74:
-                                //right arrow
-                                bufwchr('\x82');
-                                break;
-                            case 0x75:
-                                //up arrow
-                                bufwchr('\x83');
-                                break;
-                            case 0x7a:
-                                //page down
-                                bufwchr('\x87');
-                                break;
-                            case 0x7d:
-                                //page up
-                                bufwchr('\x86');
-                                break;
-                        }
+                    //pressed key starting with 0xE1 - should be Pause/Break 
+                    if(skipCount <= 0) {
+                        kstate = 0;
+                        bufferWriteChar('\x89');
                     }
-                    kstate=0;
+                    else {
+                        skipCount--;
+                    }
+                    break;
+                case 3:
+                    //released key
+                    switch(data) {
+                        case 0x11:
+                            //left alt
+                            modifs&=!L_ALT;
+                            break;
+                        case 0x12:
+                            //left shift
+                            modifs&=!L_SHIFT;
+                            break;
+                        case 0x14:
+                            //left ctrl
+                            modifs&=!L_CTRL;
+                            break;
+                        case 0x59:
+                            //right shift
+                            modifs&=!R_SHIFT;
+                            break;
+                    }
+                    kstate = 0;
                     break;
                 case 4:
-                case 5:
-                    cnt--;
-                    if(cnt==0)
-                        kstate=0;
+                    //released extended code key
+                    switch(data) {
+                        case 0x11:
+                            //right alt
+                            modifs&=!R_ALT;
+                            break;
+                        case 0x14:
+                            //right ctrl
+                            modifs&=!R_CTRL;
+                            break;
+                    }   
+                    kstate = 0;
                     break;
             }
         }
         shift=0;
-        rc=0;
     }
+}
+
+void PS2Kbd::clearBuffers() {
+    toRaw = 0;
+    fromRaw = 0;
+    toChar = 0;
+    fromChar = 0;
 }
 
 void PS2Kbd::begin() {
@@ -258,41 +336,41 @@ void PS2Kbd::begin() {
     pinMode(clkPin,OUTPUT_OPEN_DRAIN);
     digitalWrite(dataPin,true);
     digitalWrite(clkPin,true);
-    if (keyboard0==nullptr) {
-        keyboard0 = this;
+    if (keyboard0Ptr==nullptr) {
+        keyboard0Ptr = this;
         attachInterrupt(digitalPinToInterrupt(clkPin), kbdInterrupt0, FALLING);
     }
-    else if (keyboard1==nullptr) {
-        keyboard1 = this;
+    else if (keyboard1Ptr==nullptr) {
+        keyboard1Ptr = this;
         attachInterrupt(digitalPinToInterrupt(clkPin), kbdInterrupt1, FALLING);
     }
-    else if (keyboard2==nullptr) {
-        keyboard2 = this;
+    else if (keyboard2Ptr==nullptr) {
+        keyboard2Ptr = this;
         attachInterrupt(digitalPinToInterrupt(clkPin), kbdInterrupt2, FALLING);
     }
-    else if (keyboard3==nullptr) {
-        keyboard3 = this;
+    else if (keyboard3Ptr==nullptr) {
+        keyboard3Ptr = this;
         attachInterrupt(digitalPinToInterrupt(clkPin), kbdInterrupt3, FALLING);
     }
-    else if (keyboard4==nullptr) {
-        keyboard4 = this;
+    else if (keyboard4Ptr==nullptr) {
+        keyboard4Ptr = this;
         attachInterrupt(digitalPinToInterrupt(clkPin), kbdInterrupt4, FALLING);
     }
-    else if (keyboard5==nullptr) {
-        keyboard5 = this;
+    else if (keyboard5Ptr==nullptr) {
+        keyboard5Ptr = this;
         attachInterrupt(digitalPinToInterrupt(clkPin), kbdInterrupt5, FALLING);
     }
-    else if (keyboard6==nullptr) {
-        keyboard6 = this;
+    else if (keyboard6Ptr==nullptr) {
+        keyboard6Ptr = this;
         attachInterrupt(digitalPinToInterrupt(clkPin), kbdInterrupt6, FALLING);
     }
-    else if (keyboard7==nullptr) {
-        keyboard7 = this;
+    else if (keyboard7Ptr==nullptr) {
+        keyboard7Ptr = this;
         attachInterrupt(digitalPinToInterrupt(clkPin), kbdInterrupt7, FALLING);
     }
 }
 
-PS2Kbd::PS2Kbd(int dataPin, int clkPin)
+PS2Kbd::PS2Kbd(uint8_t dataPin, uint8_t clkPin)
     :dataPin(dataPin),
     clkPin(clkPin),
     shift(0),
@@ -302,39 +380,41 @@ PS2Kbd::PS2Kbd(int dataPin, int clkPin)
     numlk(false),
     dirOUT(false),
     kstate(0),
-    cnt(0),
+    skipCount(0),
     rc(0),
     CHARS(0x90),
-    from(0),
-    to(0),
+    fromChar(0),
+    toChar(0),
+    fromRaw(0),
+    toRaw(0),
     ACK(false),
     updLEDs(false)
 
 {}
 
 void PS2Kbd::kbdInterrupt0() {
-    keyboard0->interruptHandler();
+    keyboard0Ptr->interruptHandler();
 }
 void PS2Kbd::kbdInterrupt1() {
-    keyboard1->interruptHandler();
+    keyboard1Ptr->interruptHandler();
 }
 void PS2Kbd::kbdInterrupt2() {
-    keyboard2->interruptHandler();
+    keyboard2Ptr->interruptHandler();
 }
 void PS2Kbd::kbdInterrupt3() {
-    keyboard3->interruptHandler();
+    keyboard3Ptr->interruptHandler();
 }
 void PS2Kbd::kbdInterrupt4() {
-   keyboard4->interruptHandler();
+   keyboard4Ptr->interruptHandler();
 }
 void PS2Kbd::kbdInterrupt5() {
-    keyboard5->interruptHandler();
+    keyboard5Ptr->interruptHandler();
 }
 void PS2Kbd::kbdInterrupt6() {
-    keyboard6->interruptHandler();
+    keyboard6Ptr->interruptHandler();
 }
 void PS2Kbd::kbdInterrupt7() {
-    keyboard7->interruptHandler();
+    keyboard7Ptr->interruptHandler();
 }
 
 PS2Kbd::~PS2Kbd() {
