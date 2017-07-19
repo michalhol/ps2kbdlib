@@ -23,5 +23,6 @@ Left arrow: 0x80
 Right arrow:0x82
 Up arrow:   0x83
 Down arrow: 0x81
+Pause/Break 0x89
 
 All character keys have corresponding ID of the character.
