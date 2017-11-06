@@ -13,7 +13,7 @@
 #define ALT 12
 #define CTRL 48
 
-
+template<int charBufferSize = 256, int scancodeBufferSize = 256>
 class PS2Kbd {
     private:
         static PS2Kbd* keyboard0Ptr;
@@ -36,15 +36,13 @@ class PS2Kbd {
         uint8_t skipCount;
         uint8_t rc;
         const uint8_t CHARS;
-        volatile uint8_t keyScancodeBuffer[256];
+        volatile uint8_t keyScancodeBuffer[scancodeBufferSize];
         volatile uint16_t fromRaw;
         volatile uint16_t toRaw;
-        volatile uint16_t scancodeBufferSize;
 
-        volatile char charBuffer[256];
+        volatile char charBuffer[charBufferSize];
         volatile uint16_t fromChar;
         volatile uint16_t toChar;
-        volatile uint16_t charBufferSize;
 
         static const char chrsNS[];
         static const char chrsSH[];
