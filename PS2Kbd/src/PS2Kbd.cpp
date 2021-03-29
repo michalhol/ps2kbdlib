@@ -371,8 +371,8 @@ void PS2Kbd::begin() {
 }
 
 PS2Kbd::PS2Kbd(uint8_t dataPin, uint8_t clkPin)
-    :dataPin(dataPin),
-    clkPin(clkPin),
+    :clkPin(clkPin),
+    dataPin(dataPin),
     shift(0),
     modifs(0),
     cpslk(false),
@@ -383,10 +383,10 @@ PS2Kbd::PS2Kbd(uint8_t dataPin, uint8_t clkPin)
     skipCount(0),
     rc(0),
     CHARS(0x90),
-    fromChar(0),
-    toChar(0),
     fromRaw(0),
     toRaw(0),
+    fromChar(0),
+    toChar(0),
     ACK(false),
     updLEDs(false)
 
