@@ -36,7 +36,7 @@ class PS2Kbd {
         uint8_t skipCount;
         uint8_t rc;
         const uint8_t CHARS;
-        volatile uint8_t keyScancodeBuffer[256] = {NULL};
+        volatile uint8_t keyScancodeBuffer[256] = {0};
         volatile uint16_t fromRaw;
         volatile uint16_t toRaw;
 
