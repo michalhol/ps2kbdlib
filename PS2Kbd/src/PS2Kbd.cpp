@@ -119,7 +119,7 @@ void PS2Kbd::setLeds(uint8_t d) {
     send(d&7);
 }
 
-void PS2Kbd::interruptHandler() {
+void ICACHE_RAM_ATTR PS2Kbd::interruptHandler() {
     if(dirOUT)return;
     shift>>=1;
     shift|=(digitalRead(dataPin)<<10);
@@ -392,28 +392,28 @@ PS2Kbd::PS2Kbd(uint8_t dataPin, uint8_t clkPin)
 
 {}
 
-void PS2Kbd::kbdInterrupt0() {
+void ICACHE_RAM_ATTR PS2Kbd::kbdInterrupt0() {
     keyboard0Ptr->interruptHandler();
 }
-void PS2Kbd::kbdInterrupt1() {
+void ICACHE_RAM_ATTR PS2Kbd::kbdInterrupt1() {
     keyboard1Ptr->interruptHandler();
 }
-void PS2Kbd::kbdInterrupt2() {
+void ICACHE_RAM_ATTR PS2Kbd::kbdInterrupt2() {
     keyboard2Ptr->interruptHandler();
 }
-void PS2Kbd::kbdInterrupt3() {
+void ICACHE_RAM_ATTR PS2Kbd::kbdInterrupt3() {
     keyboard3Ptr->interruptHandler();
 }
-void PS2Kbd::kbdInterrupt4() {
+void ICACHE_RAM_ATTR PS2Kbd::kbdInterrupt4() {
    keyboard4Ptr->interruptHandler();
 }
-void PS2Kbd::kbdInterrupt5() {
+void ICACHE_RAM_ATTR PS2Kbd::kbdInterrupt5() {
     keyboard5Ptr->interruptHandler();
 }
-void PS2Kbd::kbdInterrupt6() {
+void ICACHE_RAM_ATTR PS2Kbd::kbdInterrupt6() {
     keyboard6Ptr->interruptHandler();
 }
-void PS2Kbd::kbdInterrupt7() {
+void ICACHE_RAM_ATTR PS2Kbd::kbdInterrupt7() {
     keyboard7Ptr->interruptHandler();
 }
 
