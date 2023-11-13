@@ -120,7 +120,7 @@ void PS2Kbd::setLeds(uint8_t d) {
 }
 
 void ICACHE_RAM_ATTR PS2Kbd::interruptHandler() {
-    if(dirOUT || digitalRead(clockPin)) return;
+    if(dirOUT || digitalRead(clkPin)) return;
     shift>>=1;
     shift|=(digitalRead(dataPin)<<10);
     if(++rc==11){
